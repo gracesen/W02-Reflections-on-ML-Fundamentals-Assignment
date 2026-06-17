@@ -1,0 +1,299 @@
+---
+title: "W02: Reflection on Fundamentals of Machine Learning"
+subtitle: "Reflections and Hands-On Lab"
+author: "Grace Sen"
+date: today
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    toc-location: right-body
+    toc-float: true
+    number-sections: true
+    theme: cosmo
+    code-fold: false
+    code-tools: true
+    link-external-newwindow: true
+    df-print: paged
+    embed-resources: true
+execute:
+  echo: true
+  warning: false
+  message: false
+---
+
+# Summarize the video presentation
+
+The video introduced tidymodels, a collection of R packages that provides a consistent workflow for machine learning. The speakers discussed data preparation, model building, evaluation, and deployment.
+
+***What did you learn about tidymodels? How is it different from others, such as Caret? What are the strengths and weaknesses of tidymodels?***
+
+I learned that tidymodels uses a modern, tidyverse-style approach to machine learning. Compared with Caret, it has a more organized workflow with other tidy tools. One strength is consistency, while one weakness is that it can be difficult for beginners to learn.
+
+***What does the workflow look like when you use tidymodels for machine learning?***
+
+The workflow usually involves preparing data, creating a recipe, defining a model, building a workflow, training the model, and evaluating the results.
+
+***What is [MLOps]{.underline} in the Machine Learning workflow? How does the vetiver package do for [MLOps]{.underline}?***
+
+MLOps refers to managing machine learning models after they are built, including deployment and monitoring. The vetiver package helps by making it easier to save, version, deploy, and maintain machine learning models.
+
+# Important fundamental concepts in Machine Learning
+
+> For each video, list key concepts, define them, explain them, and state why the concepts matter in Machine Learning.
+
+## A Gentle Introduction to Machine Learning
+
+Key concepts:
+
+-   Machine Learning
+
+-   Training data
+
+-   Prediction
+
+Machine learning is a method of teaching computers to learn patterns from data and make predictions. A model is trained using historical data and then used to predict outcomes for new data. This is important because it allows organizations to make data-driven decisions without manually programming every rule.
+
+## Cross Validation
+
+Key concepts:
+
+-   Training set
+
+-   Testing set
+
+-   Cross validation
+
+Cross validation is a technique used to evaluate how well a model performs on new data. The data is divided into multiple parts, and the model is trained and tested repeatedly. This is important because it helps reduce overfitting and provides a more reliable estimate of model performance.
+
+## The Confusion Matrix
+
+Key concepts:
+
+-   True positive
+
+-   True negative
+
+-   False positive
+
+-   False negative
+
+A confusion matrix is a table used to evaluate classification models. It compares actual outcomes with predicted outcomes and shows where the model makes correct and incorrect predictions. This is important because it provides a detailed view of model accuracy and errors.
+
+## Sensitivity and Specificity
+
+Key concepts:
+
+-   Sensitivity
+
+-   Specificity
+
+Sensitivity measures how well a model identifies positive cases, while specificity measures how well it identifies negative cases. Both metrics are important because accuracy alone may not fully describe model performance, especially when classes are imbalanced.
+
+## Bias and Variance
+
+Key concepts:
+
+-   Bias
+
+-   Variance
+
+-   Overfitting
+
+-   Underfitting
+
+Bias happens when a model is too simple and causes underfitting. Variance happens when a model is too complex and causes overfitting. A good model should balance bias and variance to make accurate predictions on new data.
+
+# Materials in the notebook
+
+```{r}
+#| echo: false
+
+library(tidyverse)
+library(broom)
+
+set.seed(42)
+n <- 1000
+
+customer_data <- tibble(
+  customer_id = 1:n,
+  tenure = sample(1:60, n, replace = TRUE),
+  monthly_spend = round(rnorm(n, mean = 85, sd = 25), 2),
+  num_products = sample(
+    1:5,
+    n,
+    replace = TRUE,
+    prob = c(0.3, 0.3, 0.2, 0.1, 0.1)
+  ),
+  num_complaints = rpois(n, lambda = 0.5),
+  last_login_days = sample(1:90, n, replace = TRUE),
+  region = sample(
+    c("West", "East", "South", "Midwest"),
+    n,
+    replace = TRUE
+  ),
+  churn = factor(
+    ifelse(
+      0.05 * num_complaints +
+      0.02 * last_login_days -
+      0.015 * tenure -
+      0.005 * monthly_spend +
+      rnorm(n, 0, 0.5) > 0.3,
+      "yes",
+      "no"
+    )
+  )
+)
+```
+
+## **Section 5.4 ✏️ - Practice 3.1 - Explore base R modeling:**
+
+***Q1. First, repeat the code given there to model the impact of car weight on mpg. Then use the tidy() function to see the estimates and other statistics in a tidy table. Also, use glance() to see the model statistics.***
+
+```{r}
+# 1. Fit a model predicting mpg from wt alone
+fit_simple <- lm(mpg ~ wt, data = mtcars)
+
+# Use tidy() to see the coefficients
+tidy(fit_simple)
+
+# 2. Use glance() to check model fit
+glance(fit_simple)
+```
+
+> ***Interpretation***: The model shows that vehicle weight has a negative relationship with fuel efficiency. As car weight increases, miles per gallon (mpg) tends to decrease. The `tidy()` function displays the coefficient estimates, while `glance()` summarizes the overall model performance and R² value.
+
+***Q2. Use augment() and show what augment does by printing out the first 10 rows of the data.***
+
+```{r}
+head(augment(fit_simple), 10)
+```
+
+> ***Interpretation***: The `augment()` function adds model information to the original dataset, including fitted values (`.fitted`) and residuals (`.resid`). This makes it easier to evaluate how well the model fits each observation and to create diagnostic plots.
+
+***Q3. Next, plot the residuals against the fitted values, as shown in the notebook. Interpret the plot in terms of homoskedasticity. Do you see a pattern? What would be an ideal pattern you look for in order to interpret a regression model meaningfully?***
+
+```{r}
+# 3. Plot fitted values vs. residuals
+augment(fit_simple) |>
+  ggplot(aes(x = .fitted, y = .resid)) +
+  geom_point(color = "#005030", alpha = 0.7) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "#FFB81C") +
+  labs(
+    title = "Fitted Values vs. Residuals",
+    x = "Fitted values",
+    y = "Residuals"
+  ) +
+  theme_minimal()
+```
+
+> ***Interpretation***: The residuals are scattered around zero with no obvious pattern, suggesting that the assumption of homoskedasticity is reasonably satisfied. Ideally, the points should appear randomly scattered around the zero line with a constant spread.
+
+***Q4. Try adding hp and cyl to the model. Does R² improve? Does the residual plot look better or worse? What does that tell you?***
+
+```{r}
+# install.packages("broom")   # run once if not installed
+library(broom)
+# install.packages("tidyverse")
+library(tidyverse)
+
+fit_multiple <- lm(
+  mpg ~ wt + hp + cyl,
+  data = mtcars
+)
+
+tidy(fit_multiple)
+
+glance(fit_multiple)
+```
+
+> ***Residual Plot***:
+
+```{r}
+augment(fit_multiple) |> 
+  ggplot(aes(x = .fitted, y = .resid)) +
+  geom_point(color = "#005030", alpha = 0.7) + 
+  geom_hline(yintercept = 0, 
+             linetype = "dashed", 
+             color = "#FFB81C") + 
+  labs( 
+    title = "Residuals vs Fitted Values", 
+    x = "Fitted Values", 
+    y = "Residuals" ) + 
+  theme_minimal()
+```
+
+> ***Interpretation***: After adding `hp` and `cyl`, the R² value improved because the model uses more variables to explain fuel efficiency. The residual plot looks more random and evenly spread around zero, suggesting a better model fit. This indicates that horsepower and cylinder count help explain variation in mpg beyond vehicle weight alone.
+
+## **Section 5.6** ✏️ **Practice 3.2 — Fit a model on marketing data**
+
+***Q1. Fit a linear model predicting monthly_spend from tenure, num_products, and region.***
+
+1.  ***Print out the model fit using the tidy() function. Also, print out the model fit using the summary() function. What is the difference?***
+
+    ```{r}
+    spend_fit <- lm(
+      monthly_spend ~ tenure + num_products + region,
+      data = customer_data
+    )
+
+    tidy(spend_fit)
+
+    summary(spend_fit)
+    ```
+
+    The `tidy()` function provides a clean table making the results easy to read. The `summary()` function provides more detailed information, including residual statistics, R², adjusted R², and the overall F-test.
+
+2.  ***Interpret the significance of each independent variable on the monthly spend at an alpha level of .05.***
+
+    None of the variables are statistically significant because all p-values are greater than .05. This suggests that `tenure`, `num_products`, and `region` do not have a strong relationship with `monthly_spend` in this dataset.
+
+***Q2. Check overall model quality using the glance() function. What does the output tell you about the quality of the model?***
+
+```{r}
+glance(spend_fit)
+```
+
+The `glance()` output shows that the model quality is poor. The R² value is very low, meaning the model explains very little of the variation in `monthly_spend`. This suggests that the predictors do not do a good job of predicting monthly spending in this dataset.
+
+***Q3. Visualize the residuals against the fitted (aka predicted) values, as shown in the codebook. What does the pattern tell you about potential heteroskedasticity?***
+
+```{r}
+augment(spend_fit) |>
+  ggplot(aes(x = .fitted, y = .resid)) +
+  geom_point(alpha = 0.3, color = "#005030") +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "#FFB81C") +
+  labs(
+    title = "Residuals: Monthly Spend Model",
+    x = "Fitted values ($)",
+    y = "Residuals"
+  ) +
+  theme_minimal()
+```
+
+> ***Interpretation***: The residuals appear to be randomly scattered around zero with no strong pattern. This suggests that there is no obvious evidence of heteroskedasticity.
+
+***Q4. Add `num_complaints` and `last_login_days` as predictors. What happens to R²? Does every predictor appear significant? What might this tell you about the data generating process we used to simulate the data?***
+
+```{r}
+spend_fit2 <- lm( 
+  monthly_spend ~ tenure + 
+    num_products + 
+    region + 
+    num_complaints + 
+    last_login_days, 
+  data = customer_data 
+  ) 
+tidy(spend_fit2) 
+glance(spend_fit2)
+```
+
+> ***Interpretation***: After adding `num_complaints` and `last_login_days`, the R² value remained very low (about 0.004). None of the predictors were statistically significant because all p-values were greater than 0.05. This suggests that the predictors have very little relationship with `monthly_spend` and that the data were likely generated with a large amount of random variation.
+
+# Push your QMD and HTML files to your GitHub repo
+
+GitHub repo URL:
+
+# Publish your document to GitHub Pages
+
+GitHub Pages URL:
